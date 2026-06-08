@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block extra_style %}
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+.card { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 1.2rem; }
+.card h3 { font-size: 0.9rem; color: #888; margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-row { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid #222; font-size: 0.88rem; }
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: #888; }
+.stat-val { color: #f0f0f0; font-weight: 600; }
+.tag { display: inline-block; background: #222; border-radius: 4px; padding: 0.15rem 0.5rem; margin: 0.15rem; font-size: 0.78rem; color: #aaa; }
+.back-link { color: #5bc0f8; text-decoration: none; font-size: 0.88rem; }
+.back-link:hover { text-decoration: underline; }
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1rem;">
+    <a class="back-link" href="/">← Back to dashboard</a>
+</div>
+
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+    <h2 style="font-size:1.5rem;">{{ trend.label }}</h2>
+    <span class="badge badge-{{ trend.state }}">{{ trend.state }}</span>
+    {% if trend.crossover_categories %}
+    <span style="font-size:0.8rem;color:#f9a825;">Crossover: {{ trend.crossover_categories | join(', ') }}</span>
+    {% endif %}
+</div>
+<p style="color:#888;font-size:0.88rem;">{{ trend.primary_hashtag }} &middot; {{ trend.category.replace('_',' ').title() }} &middot; First seen {{ trend.first_seen }}</p>
+
+<div class="detail-grid">
+    <div class="card">
+        <h3>Stats</h3>
+        <div class="stat-row"><span class="stat-label">Current Rank</span><span class="stat-val">#{{ trend.current_rank }}</span></div>
+        <div class="stat-row"><span class="stat-label">Weeks Active</span><span class="stat-val">{{ trend.weeks_active }}</span></div>
+        <div class="stat-row"><span class="stat-label">Velocity</span><span class="stat-val">{{ "%.1f"|format(trend.velocity_pct) }}%</span></div>
+        <div class="stat-row"><span class="stat-label">Momentum</span><span class="stat-val">{{ "%.3f"|format(trend.momentum_score) }}</span></div>
+        <div class="stat-row"><span class="stat-label">Predicted Peak</span><span class="stat-val">{{ trend.predicted_peak or '—' }}</span></div>
+        <div class="stat-row"><span class="stat-label">Last Seen</span><span class="stat-val">{{ trend.last_seen }}</span></div>
+    </div>
+
+    <div class="card">
+        <h3>Engagement Sparkline</h3>
+        <canvas id="engagementChart" height="80"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Related Hashtags</h3>
+        {% for tag in trend.related_hashtags %}
+        <span class="tag">{{ tag }}</span>
+        {% else %}
+        <span style="color:#555;">None</span>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <h3>Top Creators</h3>
+        {% for creator in trend.top_creators %}
+        <div class="stat-row">
+            <span class="stat-label">@{{ creator.username }}</span>
+            <span class="stat-val">{{ "{:,}".format(creator.followers) }} followers</span>
+        </div>
+        {% else %}
+        <span style="color:#555;">No data</span>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <h3>Top Sounds</h3>
+        {% for sound in trend.top_sounds %}
+        <div class="stat-row">
+            <span class="stat-label">{{ sound.title }} — {{ sound.author }}</span>
+            <span class="stat-val">{{ sound.count }}x</span>
+        </div>
+        {% else %}
+        <span style="color:#555;">No data</span>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <h3>Rank History</h3>
+        <canvas id="rankChart" height="80"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+document.addEventListener('DOMContentLoaded', function() {
+    const engData = {{ trend.engagement_history | tojson }};
+    const rankData = {{ trend.rank_history | tojson }};
+
+    if (engData.length) {
+        new Chart(document.getElementById('engagementChart'), {
+            type: 'line',
+            data: {
+                labels: engData.map((_, i) => 'W' + (i+1)),
+                datasets: [{
+                    label: 'Engagement',
+                    data: engData,
+                    borderColor: '#ff2d55',
+                    backgroundColor: 'rgba(255,45,85,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#888' }, grid: { color: '#222' } },
+                    y: { ticks: { color: '#888' }, grid: { color: '#222' } }
+                }
+            }
+        });
+    }
+
+    if (rankData.length) {
+        new Chart(document.getElementById('rankChart'), {
+            type: 'line',
+            data: {
+                labels: rankData.map((_, i) => 'W' + (i+1)),
+                datasets: [{
+                    label: 'Rank',
+                    data: rankData,
+                    borderColor: '#5bc0f8',
+                    backgroundColor: 'rgba(91,192,248,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#888' }, grid: { color: '#222' } },
+                    y: {
+                        reverse: true,
+                        ticks: { color: '#888' },
+                        grid: { color: '#222' }
+                    }
+                }
+            }
+        });
+    }
+});
+{% endblock %}

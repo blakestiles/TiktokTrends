@@ -1,0 +1,25 @@
+provider: omkarcloud
+top_n_per_week: 20
+grace_period_weeks: 3
+emerging_to_active_weeks: 2
+velocity_promote_pct: 50
+engagement_floor: 50000
+rank_drop_threshold: 10
+classifier_min_score: 0.3
+topic_cluster_similarity: 0.75
+momentum_weights:
+  velocity: 0.5
+  rank: 0.3
+  engagement: 0.2
+viewer_port: 3000
+scrape:
+  request_delay_sec: 4
+  jitter_sec: 2
+  max_retries: 3
+notifications:
+  discord_webhook: ""
+  slack_webhook: ""
+categories:
+  - games
+  - card_games
+  - games_marketing

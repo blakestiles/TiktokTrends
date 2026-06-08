@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="tabs">
+    {% for cat in categories %}
+    <button
+        class="tab-btn {% if cat == selected_category %}active{% endif %}"
+        hx-get="/trends?category={{ cat }}"
+        hx-target="#trends-table-body"
+        hx-swap="innerHTML"
+        onclick="setActiveTab(this)"
+    >{{ cat.replace('_', ' ').title() }}</button>
+    {% endfor %}
+</div>
+
+<table id="trends-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Trend</th>
+            <th>State</th>
+            <th>Hashtag</th>
+            <th>Weeks Active</th>
+            <th>Momentum</th>
+            <th>Engagement (latest)</th>
+            <th>Sparkline</th>
+        </tr>
+    </thead>
+    <tbody id="trends-table-body">
+        {% include "partials/trend_rows.html" %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+function setActiveTab(el) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+}
+
+document.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.target.id === 'trends-table-body') {
+        renderAllSparklines();
+    }
+});
+
+function renderAllSparklines() {
+    document.querySelectorAll('[data-sparkline]').forEach(canvas => {
+        const raw = canvas.getAttribute('data-sparkline');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (!data.length) return;
+        const existing = Chart.getChart(canvas);
+        if (existing) existing.destroy();
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: data.map((_, i) => `W${i+1}`),
+                datasets: [{
+                    data: data,
+                    borderColor: '#ff2d55',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.3,
+                    fill: false,
+                }]
+            },
+            options: {
+                animation: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                responsive: false,
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', renderAllSparklines);
+{% endblock %}
